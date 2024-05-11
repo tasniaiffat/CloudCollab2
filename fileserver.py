@@ -1,6 +1,8 @@
 import socket
 import threading
 import os
+import tqdm
+import time
 
 HOST = 'localhost'
 PORT = 7071
@@ -9,14 +11,14 @@ FORMAT = 'utf-8'
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((HOST,PORT))
 
-def handle_client(conn,address):
-    print(f"[NEW CONNECTION] Connected to {address}")
-    send_data = ''
-    connected=True
-    # while connected:
-    arr=os.listdir("D:\\CP")
+def file_download(conn):
+
+    arr = []
+
+    arr=os.listdir(".\\Server")
     # conn.send(str(len(arr)).encode(FORMAT))
-    
+    send_data = ""
+
     for ob in arr:
         ob=ob+"\n"
         send_data = send_data+ob
@@ -30,20 +32,56 @@ def handle_client(conn,address):
     if filename == "quit": 
         connected = False
         # break
-    filename = "D:\\CP\\" + filename  
-    # filename = "Introduction to Algorithms - Corman.pdf"
+    filename = ".\\Server\\" + filename  
+
     filesize = os.path.getsize(filename)
     
-    conn.send(str(filesize).encode(FORMAT))
+    conn.send(str(filesize).encode())
     
     file=open(filename,"rb")
     data=file.read()
     file.close()
-    # data = data + b"<END>"
-    # print(data)
+    
     data = data + b"<END>"
+    # print(data)
     conn.sendall(data)
-            
+        
+    # conn.close()
+
+def file_upload(conn):
+    
+    # filename = conn.recv(1024).decode()
+    # print(filename)
+    # filesize = os.path.getsize(filename)
+    file_size = conn.recv(1024).decode("utf-8")
+    # print(file_size)
+    name = ".\\Server\\new_file.pdf"
+    file = open(name, "wb")
+
+    progress = tqdm.tqdm(unit="B", unit_scale=True, unit_divisor=1000, total=float(file_size))
+    data_bytes=b""
+    while True:
+        data = conn.recv(1024)
+        if data_bytes[-5:]==b"<END>":
+            break
+        file.write(data)
+        data_bytes += data
+        progress.update(len(data))
+
+    file.close()
+    print("File received successfully.")
+    # conn.close()
+
+
+def handle_client(conn,address):
+    print(f"[NEW CONNECTION] Connected to {address}")
+    time.sleep(2)
+    option = conn.recv(1024).decode()
+    print(option)
+    if option == "download":
+        file_download(conn) 
+    else :
+        file_upload(conn)           
         
     conn.close()
 
